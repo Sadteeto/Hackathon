@@ -522,6 +522,27 @@ static esp_err_t capture_handler(httpd_req_t *req)
 #endif
 }
 
+
+static esp_err_t microphone_handler(httpd_req_t *req){
+    // TODO Implement
+    const char *json_response = "{\"error\": \"Not implemented\"}";
+    return httpd_resp_send(req, json_response, strlen(json_response));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static esp_err_t stream_handler(httpd_req_t *req)
 {
     camera_fb_t *fb = NULL;
@@ -1225,6 +1246,20 @@ void startCameraServer()
 #endif
     };
 
+
+
+    //adding a microphone support here: 
+    //TODO: Implement the microphone support
+    httpd_uri_t microphone_uri = {
+        .uri = "/mic",
+        .method = HTTP_GET,
+        .handler = microphone_handler,
+        .user_ctx = NULL
+    };
+
+
+
+
     httpd_uri_t status_uri = {
         .uri = "/status",
         .method = HTTP_GET,
@@ -1377,6 +1412,8 @@ void startCameraServer()
         httpd_register_uri_handler(camera_httpd, &greg_uri);
         httpd_register_uri_handler(camera_httpd, &pll_uri);
         httpd_register_uri_handler(camera_httpd, &win_uri);
+        //TODO: to change for streaming on i2s
+        httpd_register_uri_handler(camera_httpd, &microphone_uri);
     }
 
     config.server_port += 1;
