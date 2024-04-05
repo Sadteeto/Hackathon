@@ -1,5 +1,7 @@
 #include "esp_camera.h"
 #include <WiFi.h>
+#include "driver/i2s.h"
+// #include "i2sStream.cpp"
 
 //
 // WARNING!!! PSRAM IC required for UXGA resolution and high JPEG quality
@@ -38,6 +40,7 @@
 const char* ssid = "Beemo";
 const char* password = "77777777";
 
+void init_i2s();
 void startCameraServer();
 void setupLedFlash(int pin);
 
@@ -45,7 +48,7 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
-
+  init_i2s();
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
