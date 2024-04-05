@@ -293,6 +293,11 @@
 #define HREF_GPIO_NUM 7
 #define PCLK_GPIO_NUM 13
 
+//microphone
+#define I2S_SCK 41
+#define I2S_WS 42
+#define I2S_SDO 2
+
 #elif defined(CAMERA_MODEL_DFRobot_FireBeetle2_ESP32S3) || defined(CAMERA_MODEL_DFRobot_Romeo_ESP32S3)
 #define PWDN_GPIO_NUM     -1
 #define RESET_GPIO_NUM    -1
