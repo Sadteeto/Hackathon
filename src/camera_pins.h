@@ -293,10 +293,18 @@
 #define HREF_GPIO_NUM 7
 #define PCLK_GPIO_NUM 13
 
-//microphone
+//microphone https://dl.espressif.com/dl/schematics/SCH_ESP32-S3-EYE-MB_20211201_V2.2.pdf
 #define I2S_SCK 41
 #define I2S_WS 42
 #define I2S_SDO 2
+
+// 1.3 inch LCD display 240 x 240 https://dl.espressif.com/dl/schematics/SCH_ESP32-S3-EYE_SUB_V1.1_20210913.pdf
+#define LCD_DC 43
+#define LCD_CS 44
+#define LCD_SCLK 21
+#define LCD_SDA 47
+#define LCD_BL 48 
+
 
 #elif defined(CAMERA_MODEL_DFRobot_FireBeetle2_ESP32S3) || defined(CAMERA_MODEL_DFRobot_Romeo_ESP32S3)
 #define PWDN_GPIO_NUM     -1
