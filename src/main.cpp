@@ -1,6 +1,8 @@
 #include "esp_camera.h"
 #include <WiFi.h>
 #include "driver/i2s.h"
+
+#include <WebServer.h>
 // #include "i2sStream.cpp"
 
 //
@@ -37,24 +39,83 @@
 // ===========================
 // Enter your WiFi credentials
 // ===========================
+
+
 //const char* ssid = "HF Net";
 //const char* password = "Pearl2004";
 
 //const char* ssid = "Beemo";
 //const char* password = "qwertyui";
 
-const char* ssid = "REEMO 5956";
-const char* password = ",20417Fz";
+// const char* ssid = "REEMO 5956";
+// const char* password = ",20417Fz";
+
+
+const char* ssid = "Skrskrskr";
+const char* password = "diQ1lwB1@T9W";
+
 
 void init_i2s();
 void startCameraServer();
 void setupLedFlash(int pin);
+
+WebServer server(1000);
+// Function to send the WAV header to the client
+void sendWavHeader() {
+    byte header[44] = {
+        0x52, 0x49, 0x46, 0x46, // RIFF
+        0xFF, 0xFF, 0xFF, 0xFF, // File size, placeholder to be replaced
+        0x57, 0x41, 0x56, 0x45, // WAVE
+        0x66, 0x6D, 0x74, 0x20, // fmt 
+        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+        0x01, 0x00,             // AudioFormat (PCM = 1)
+        0x01, 0x00,             // NumChannels (Mono = 1)
+        0x44, 0xAC, 0x00, 0x00, // SampleRate (44100 Hz)
+        0x88, 0x58, 0x01, 0x00, // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+        0x02, 0x00,             // BlockAlign (NumChannels * BitsPerSample/8)
+        0x10, 0x00,             // BitsPerSample
+        0x64, 0x61, 0x74, 0x61, // data
+        0xFF, 0xFF, 0xFF, 0xFF  // Subchunk2Size (data size, placeholder to be replaced)
+    };
+    server.sendContent_P((const char*)header, sizeof(header));
+}
+
+
+void handleAudioStream() {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "audio/wav", "");
+
+    sendWavHeader();
+
+    const int i2s_read_len = 1024;
+    int16_t i2s_read_buff[i2s_read_len];
+
+    while (true) {
+        size_t bytes_read;
+        esp_err_t i2s_read_result = i2s_read(I2S_NUM_0, (void*) i2s_read_buff, i2s_read_len * sizeof(int16_t), &bytes_read, portMAX_DELAY);
+
+        if (i2s_read_result == ESP_OK && bytes_read > 0) {
+            server.sendContent_P((const char*)i2s_read_buff, bytes_read);
+        }
+
+        if (!server.client().connected()) {
+            Serial.println("Client Disconnected");
+            break;
+        }
+    }
+}
+
+
+
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
   init_i2s();
+
+
+
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -151,7 +212,9 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
 
+  server.on("/stream", HTTP_GET, handleAudioStream);
   startCameraServer();
+  server.begin();
 
   Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
