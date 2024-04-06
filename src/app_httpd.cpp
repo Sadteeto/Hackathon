@@ -19,8 +19,14 @@
 #include "esp32-hal-ledc.h"
 #include "sdkconfig.h"
 #include "camera_index.h"
+#include "Arduino.h"
 // make sure follow espidf v4.4.6
 // #include "i2s_pdm.h" < this does not work
+#include "driver/i2s.h"
+
+#define CONFIG_HTTPD_WS_SUPPORT 1
+
+
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
 #endif
@@ -101,6 +107,7 @@ static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %
 
 httpd_handle_t stream_httpd = NULL;
 httpd_handle_t camera_httpd = NULL;
+httpd_handle_t microphone_httpd = NULL;
 
 #if CONFIG_ESP_FACE_DETECT_ENABLED
 
@@ -524,21 +531,70 @@ static esp_err_t capture_handler(httpd_req_t *req)
 }
 
 
-static esp_err_t microphone_handler(httpd_req_t *req){
-    // TODO Implement
-    const char *json_response = "{\"error\": \"Not implemented\"}";
-    return httpd_resp_send(req, json_response, strlen(json_response));
+
+#define AUDIO_BUFFER_SIZE 4096
+static esp_err_t microphone_handler(httpd_req_t *req) {
+    esp_err_t res = ESP_OK;
+    char audio_buffer[4096];
+    size_t audio_buffer_pos = 0;
+    
+    // Set necessary headers for chunked transfer
+    httpd_resp_set_type(req, "audio/wav");
+    httpd_resp_set_hdr(req, "Transfer-Encoding", "chunked");
+    //server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    //server.send(200, "audio/wav", "");
+
+    
+    // Predefined WAV header for 44100 Hz, mono, 16 bits per sample
+    byte wav_header[44] = {
+        0x52, 0x49, 0x46, 0x46, // "RIFF"
+        0xFF, 0xFF, 0xFF, 0xFF, // File size, will not be used (streaming)
+        0x57, 0x41, 0x56, 0x45, // "WAVE"
+        0x66, 0x6D, 0x74, 0x20, // "fmt "
+        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+        0x01, 0x00,             // AudioFormat (PCM = 1)
+        0x01, 0x00,             // NumChannels (Mono = 1)
+        0x44, 0xAC, 0x00, 0x00, // SampleRate (44100 Hz)
+        0x88, 0x58, 0x01, 0x00, // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
+        0x02, 0x00,             // BlockAlign (NumChannels * BitsPerSample/8)
+        0x10, 0x00,             // BitsPerSample (16 bits)
+        0x64, 0x61, 0x74, 0x61, // "data"
+        0xFF, 0xFF, 0xFF, 0xFF  // Subchunk2Size, will not be used (streaming)
+    };
+
+    // Send the WAV header first
+    httpd_resp_send_chunk(req, (const char *)wav_header, sizeof(wav_header));
+
+    const int i2s_read_len = 1024;
+    char i2s_read_buff[i2s_read_len];
+    size_t bytes_read;
+
+    // Stream audio data in a loop
+    while (1) {
+    i2s_read(I2S_NUM_0, &i2s_read_buff, sizeof(i2s_read_buff), &bytes_read, portMAX_DELAY);
+    if (bytes_read > 0) {
+        // Aggregate bytes in the buffer
+        if (audio_buffer_pos + bytes_read <= AUDIO_BUFFER_SIZE) {
+            memcpy(audio_buffer + audio_buffer_pos, i2s_read_buff, bytes_read);
+            audio_buffer_pos += bytes_read;
+        }
+        
+        // If the buffer is full, or you want to flush the buffer periodically, send it
+        if (audio_buffer_pos == AUDIO_BUFFER_SIZE) {
+            res = httpd_resp_send_chunk(req, audio_buffer, audio_buffer_pos);
+            if (res != ESP_OK) {
+                break;
+            }
+            audio_buffer_pos = 0; // Reset buffer position
+        }
+    }
 }
 
+    // Send a zero-length chunk to indicate the end of the stream
+    httpd_resp_send_chunk(req, 0, 0);
 
-
-
-
-
-
-
-
-
+    return ESP_OK;
+}
 
 
 
@@ -1232,7 +1288,8 @@ static esp_err_t index_handler(httpd_req_t *req)
 void startCameraServer()
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 16;
+    config.stack_size = 8192;
+    config.max_uri_handlers = 20;
 
     httpd_uri_t index_uri = {
         .uri = "/",
@@ -1256,6 +1313,12 @@ void startCameraServer()
         .method = HTTP_GET,
         .handler = microphone_handler,
         .user_ctx = NULL
+#ifdef CONFIG_HTTPD_WS_SUPPORT
+        ,
+        .is_websocket = true,
+        .handle_ws_control_frames = false,
+        .supported_subprotocol = NULL
+#endif
     };
 
 
@@ -1413,8 +1476,7 @@ void startCameraServer()
         httpd_register_uri_handler(camera_httpd, &greg_uri);
         httpd_register_uri_handler(camera_httpd, &pll_uri);
         httpd_register_uri_handler(camera_httpd, &win_uri);
-        //TODO: to change for streaming on i2s
-        httpd_register_uri_handler(camera_httpd, &microphone_uri);
+  
     }
 
     config.server_port += 1;
@@ -1423,7 +1485,18 @@ void startCameraServer()
     if (httpd_start(&stream_httpd, &config) == ESP_OK)
     {
         httpd_register_uri_handler(stream_httpd, &stream_uri);
+        httpd_register_uri_handler(stream_httpd, &microphone_uri);
     }
+
+    // on the other port open the microphone
+    // config.server_port +=1;
+    // config.ctrl_port +=1;
+    // log_i("Starting microphone server on port: '%d'", config.server_port);
+    // if (httpd_start(&microphone_httpd, &config) == ESP_OK)
+    // {
+    //     httpd_register_uri_handler(microphone_httpd, &microphone_uri);
+    // }
+
 }
 
 void setupLedFlash(int pin) 
