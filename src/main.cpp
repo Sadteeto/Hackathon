@@ -36,7 +36,7 @@
 // Enter your WiFi credentials
 // ===========================
 const char* ssid = "Beemo";
-const char* password = "77777777";
+const char* password = "qwertyui";
 
 void startCameraServer();
 void setupLedFlash(int pin);
@@ -44,7 +44,13 @@ void setupLedFlash(int pin);
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
-  Serial.println();
+  // while (1)
+  // {
+  //   Serial.println("heaklhfdjkslahfjdklshafjkl");
+  //   delay(1000);
+  // }
+  
+  
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
