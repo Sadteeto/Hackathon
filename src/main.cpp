@@ -41,6 +41,7 @@
 // ===========================
 
 
+
 //const char* ssid = "HF Net";
 //const char* password = "Pearl2004";
 
@@ -113,7 +114,6 @@ void setup() {
   Serial.setDebugOutput(true);
   Serial.println();
   init_i2s();
-
 
 
   camera_config_t config;
