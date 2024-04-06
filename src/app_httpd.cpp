@@ -19,37 +19,65 @@
 #include "esp32-hal-ledc.h"
 #include "sdkconfig.h"
 #include "camera_index.h"
-
+#include "Arduino.h"
 // make sure follow espidf v4.4.6
 // #include "i2s_pdm.h" < this does not work
 #include "driver/i2s.h"
 
-#define SAMPLE_RATE     16000
+#define SAMPLE_RATE   44100
 #define BITS_PER_SAMPLE 16
 #define CHANNEL_COUNT   1
+#define SAMPLE_SIZE         (16 * 1024)
+#define WAVE_HEADER_SIZE 44
+#define BYTE_RATE           (SAMPLE_RATE * (BITS_PER_SAMPLE / 8)) * CHANNEL_COUNT
+
+static int16_t i2s_readraw_buff[SAMPLE_SIZE];
 
 
+// void generate_wav_header(uint8_t *header, int num_samples) {
+//     int file_size = num_samples * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT + 44 - 8; // WAV header size minus RIFF and size fields
+//     int data_size = num_samples * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
+//     int byte_rate = SAMPLE_RATE * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
+//     int block_align = BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
+// 
+//     // RIFF header
+//     memcpy(header, "RIFF", 4);
+//     *(int *)(header + 4) = file_size;
+//     memcpy(header + 8, "WAVEfmt ", 8);
+//     *(int *)(header + 16) = 16; // PCM chunk size
+//     *(short *)(header + 20) = 1; // PCM format
+//     *(short *)(header + 22) = CHANNEL_COUNT;
+//     *(int *)(header + 24) = SAMPLE_RATE;
+//     *(int *)(header + 28) = byte_rate;
+//     *(short *)(header + 32) = block_align;
+//     *(short *)(header + 34) = BITS_PER_SAMPLE;
+//     memcpy(header + 36, "data", 4);
+//     *(int *)(header + 40) = data_size;
+// }
+void generate_wav_header(char* wav_header, uint32_t wav_size, uint32_t sample_rate){
+uint32_t file_size = wav_size + WAVE_HEADER_SIZE - 8;
+uint32_t byte_rate = BYTE_RATE;
 
-void generate_wav_header(uint8_t *header, int num_samples) {
-    int file_size = num_samples * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT + 44 - 8; // WAV header size minus RIFF and size fields
-    int data_size = num_samples * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
-    int byte_rate = SAMPLE_RATE * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
-    int block_align = BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
-
-    // RIFF header
-    memcpy(header, "RIFF", 4);
-    *(int *)(header + 4) = file_size;
-    memcpy(header + 8, "WAVEfmt ", 8);
-    *(int *)(header + 16) = 16; // PCM chunk size
-    *(short *)(header + 20) = 1; // PCM format
-    *(short *)(header + 22) = CHANNEL_COUNT;
-    *(int *)(header + 24) = SAMPLE_RATE;
-    *(int *)(header + 28) = byte_rate;
-    *(short *)(header + 32) = block_align;
-    *(short *)(header + 34) = BITS_PER_SAMPLE;
-    memcpy(header + 36, "data", 4);
-    *(int *)(header + 40) = data_size;
+    const char set_wav_header[] = {
+        'R','I','F','F', // ChunkID
+        file_size, file_size >> 8, file_size >> 16, file_size >> 24, // ChunkSize
+        // 0xFF, 0xFF, 0xFF, 0xFF, // ChunkSize
+        'W','A','V','E', // Format
+        'f','m','t',' ', // Subchunk1ID
+        0x10, 0x00, 0x00, 0x00, // Subchunk1Size (16 for PCM)
+        0x01, 0x00, // AudioFormat (1 for PCM)
+        0x01, 0x00, // NumChannels (1 channel)
+        sample_rate, sample_rate >> 8, sample_rate >> 16, sample_rate >> 24, // SampleRate
+        byte_rate, byte_rate >> 8, byte_rate >> 16, byte_rate >> 24, // ByteRate
+        0x02, 0x00, // BlockAlign
+        0x10, 0x00, // BitsPerSample (16 bits)
+        'd','a','t','a', // Subchunk2ID
+        wav_size, wav_size >> 8, wav_size >> 16, wav_size >> 24, // Subchunk2Size
+        // 0xFF, 0xFF, 0xFF, 0xFF, // Subchunk2Size
+    };
+    memcpy(wav_header, set_wav_header, sizeof(set_wav_header));
 }
+
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
 #include "esp32-hal-log.h"
@@ -559,51 +587,93 @@ static esp_err_t capture_handler(httpd_req_t *req)
 //     // // TODO Implement
 //     // const char *json_response = "{\"error\": \"Not implemented\"}";
 //     // return httpd_resp_send(req, json_response, strlen(json_response));
-
 //     uint8_t i2s_read_buff[1024]; // Adjust size as needed
 //     size_t bytes_read;
-
 //     // Read data from the I2S microphone
 //     i2s_read(I2S_NUM_0, (void*) i2s_read_buff, sizeof(i2s_read_buff), &bytes_read, portMAX_DELAY);
-
 //     // For simplicity, we directly send this buffer as the response.
 //     // In a real application, you might want to process this data or format it differently.
 //     httpd_resp_set_type(req, "application/octet-stream");
 //     return httpd_resp_send(req, (const char*) i2s_read_buff, bytes_read);
 // }
+ static esp_err_t microphone_handler(httpd_req_t *req) {
+     char wav_header[44];
+     uint8_t i2s_read_buff[1024]; // Buffer for reading from I2S
+ 
+     size_t bytes_read;
+     generate_wav_header(wav_header, SAMPLE_RATE * 1, SAMPLE_RATE); // Example for 10 seconds, adjust accordingly
+ 
+     // Set the response type to audio/wav
+     httpd_resp_set_type(req, "audio/wav");
+     httpd_resp_set_hdr(req, "Transfer-Encoding", "chunked");
+     // Send the WAV header first
+     httpd_resp_send_chunk(req, (const char*)wav_header, sizeof(wav_header));
+ 
+     // Continuously stream data (in a real application, you would need to allow for stopping the stream)
+     while (1) {
+         //i2s_read(I2S_NUM_0, i2s_read_buff, sizeof(i2s_read_buff), &bytes_read, 10000);
+         i2s_read(I2S_NUM_0, (char *)i2s_readraw_buff, SAMPLE_SIZE, &bytes_read, portMAX_DELAY);
 
+         //i2s_read(I2S_NUM_0, (void*) i2s_read_buff, sizeof(i2s_read_buff), &bytes_read, portMAX_DELAY);
+         if (bytes_read > 0) {
+             httpd_resp_send_chunk(req, (const char*)i2s_readraw_buff, bytes_read);
 
-static esp_err_t microphone_handler(httpd_req_t *req) {
-    uint8_t wav_header[44];
-    uint8_t i2s_read_buff[1024]; // Buffer for reading from I2S
-    size_t bytes_read;
-
-    generate_wav_header(wav_header, SAMPLE_RATE * 10); // Example for 10 seconds, adjust accordingly
-
-    // Set the response type to audio/wav
-    httpd_resp_set_type(req, "audio/wav");
-    // Send the WAV header first
-    httpd_resp_send_chunk(req, (const char*)wav_header, sizeof(wav_header));
-
-    // Continuously stream data (in a real application, you would need to allow for stopping the stream)
-    while (1) {
-        i2s_read(I2S_NUM_0, (void*) i2s_read_buff, sizeof(i2s_read_buff), &bytes_read, portMAX_DELAY);
-        if (bytes_read > 0) {
-            httpd_resp_send_chunk(req, (const char*)i2s_read_buff, bytes_read);
-        } else {
-            break; // Error or no more data to read, stop the loop
-        }
-    }
-
-    // End the HTTP response
-    httpd_resp_send_chunk(req, NULL, 0);
-
-    return ESP_OK;
+             //print readable data to uart
+//            for (int i = 0; i < bytes_read; i++) {
+ //               Serial.printf("%d ", i2s_read_buff[i]);
+  //          }
+ 
+         } else {
+             break; // Error or no more data to read, stop the loop
+         }
+     }
+ 
+     // End the HTTP response
+     httpd_resp_send_chunk(req, NULL, 0);
+ 
+  return ESP_OK;
 }
-
-
-
-
+//
+//static esp_err_t microphone_handler(httpd_req_t *req) {
+//    // Calculate buffer size
+//    int total_samples = SAMPLE_RATE * 2;
+//    int total_bytes = total_samples * BITS_PER_SAMPLE / 8 * CHANNEL_COUNT;
+//
+//    // Allocate buffer for audio data
+//    uint8_t* audio_data = (uint8_t*) malloc(total_bytes);
+//    if (!audio_data) {
+//        ESP_LOGE("microphone_handler", "Failed to allocate memory for audio data");
+//        httpd_resp_send_500(req);
+//        return ESP_FAIL;
+//    }
+//
+//    // Read data from I2S into buffer
+//    size_t bytes_read = 0;
+//    size_t total_bytes_read = 0;
+//    while (total_bytes_read < total_bytes) {
+//        i2s_read(I2S_NUM_0, (void*) (audio_data + total_bytes_read), total_bytes - total_bytes_read, &bytes_read, portMAX_DELAY);
+//        total_bytes_read += bytes_read;
+//    }
+//
+//    // Generate WAV header
+//    uint8_t wav_header[44];
+//    generate_wav_header(wav_header, total_samples);
+//
+//    // Set the response type to audio/wav
+//    httpd_resp_set_type(req, "audio/wav");
+//    // No chunked transfer encoding in this case, we know the content length
+//    httpd_resp_send_chunk(req, (const char*)wav_header, sizeof(wav_header));
+//    httpd_resp_send_chunk(req, (const char*)audio_data, total_bytes);
+//    // End the response
+//    httpd_resp_send_chunk(req, NULL, 0);
+//
+//    // Free the audio buffer
+//    free(audio_data);
+//
+//    return ESP_OK;
+//    }
+//
+//
 
 static esp_err_t stream_handler(httpd_req_t *req)
 {

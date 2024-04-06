@@ -37,8 +37,14 @@
 // ===========================
 // Enter your WiFi credentials
 // ===========================
-const char* ssid = "Beemo";
-const char* password = "77777777";
+//const char* ssid = "HF Net";
+//const char* password = "Pearl2004";
+
+//const char* ssid = "Beemo";
+//const char* password = "qwertyui";
+
+const char* ssid = "REEMO 5956";
+const char* password = ",20417Fz";
 
 void init_i2s();
 void startCameraServer();
