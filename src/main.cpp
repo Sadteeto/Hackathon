@@ -31,6 +31,9 @@
 //#define CAMERA_MODEL_DFRobot_FireBeetle2_ESP32S3 // Has PSRAM
 //#define CAMERA_MODEL_DFRobot_Romeo_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
+#include <button.h>
+
+audio_button button;
 
 // ===========================
 // Enter your WiFi credentials
@@ -44,6 +47,7 @@ void setupLedFlash(int pin);
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
+  button.init();
   // while (1)
   // {
   //   Serial.println("heaklhfdjkslahfjdklshafjkl");
@@ -157,5 +161,6 @@ void setup() {
 
 void loop() {
   // Do nothing. Everything is done in another task by the web server
-  delay(10000);
+  // delay(10000);
+  button.audio_activation(true);
 }
