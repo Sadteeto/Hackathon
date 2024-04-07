@@ -48,12 +48,12 @@
 //const char* ssid = "Beemo";
 //const char* password = "qwertyui";
 
-// const char* ssid = "REEMO 5956";
-// const char* password = ",20417Fz";
+const char* ssid = "REEMO 5956";
+const char* password = ",20417Fz";
 
 
-const char* ssid = "Skrskrskr";
-const char* password = "diQ1lwB1@T9W";
+// const char* ssid = "Skrskrskr";
+// const char* password = "diQ1lwB1@T9W";
 
 
 void init_i2s();
