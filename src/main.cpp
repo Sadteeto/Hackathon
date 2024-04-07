@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include "driver/i2s.h"
 
-#include <WebServer.h>
+// #include <WebServer.h>
 // #include "i2sStream.cpp"
 
 //
@@ -35,6 +35,10 @@
 //#define CAMERA_MODEL_DFRobot_FireBeetle2_ESP32S3 // Has PSRAM
 //#define CAMERA_MODEL_DFRobot_Romeo_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
+#include <button.h>
+#include <Arduino.h>
+
+audio_button button;
 
 // ===========================
 // Enter your WiFi credentials
@@ -59,16 +63,16 @@ const char* password = ",20417Fz";
 void init_i2s();
 void startCameraServer();
 void setupLedFlash(int pin);
-
-
-
+void send_post_request_start();
+void send_post_request_stop();
+void send_post_request_take_pic();
 
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
   init_i2s();
-
+  button.init();
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -173,5 +177,20 @@ void setup() {
 
 void loop() {
   // Do nothing. Everything is done in another task by the web server
-  delay(10000);
+  // delay(10000);
+  int activate = button.audio_activation();
+  if(activate == 1) {
+    send_post_request_start();
+  } else if(activate == 2) {
+    send_post_request_stop();
+  } else if (activate == 3) {
+    send_post_request_take_pic();
+  }
+
+  
+  Serial.println(activate);
+  delay(100);
+
+
+
 }
