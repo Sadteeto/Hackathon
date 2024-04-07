@@ -42,6 +42,6 @@ void audio_button::check_buttons() {
     Serial.print("\t");
     Serial.println(voltage_out);
     for(int i = 0; i < 4; i++) {
-        buttons[i] = abs(voltage_out - voltages[i]) < 100;
+        buttons[i] = abs(voltage_out - voltages[i]) < 200;
     }
 }

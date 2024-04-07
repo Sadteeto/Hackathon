@@ -8,7 +8,7 @@
 // #include "sdkconfig.h"
 // #include "camera_index.h"
 
-#define SERVER "http://192.168.137.78:5000/post"
+#define SERVER "http://192.168.137.143:5000/post"
 
 
 
