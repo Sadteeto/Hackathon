@@ -32,6 +32,7 @@
 //#define CAMERA_MODEL_DFRobot_Romeo_ESP32S3 // Has PSRAM
 #include "camera_pins.h"
 #include <button.h>
+#include <Arduino.h>
 
 audio_button button;
 
@@ -163,4 +164,5 @@ void loop() {
   // Do nothing. Everything is done in another task by the web server
   // delay(10000);
   button.audio_activation();
+  delay(100);
 }

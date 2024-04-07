@@ -4,8 +4,7 @@
 #include <Arduino.h>
 
 #define AUDIO_BUTTON_NUMBER 0
-#define BUTTON_ENABLE 3
-#define BUTTON_GPIO_PIN 1
+#define BUTTON_GPIO_PIN GPIO_NUM_1
 
 class audio_button {
 public:
@@ -15,7 +14,7 @@ public:
 private:
     void check_buttons();
     bool buttons[4] = {false, false, false, false};
-    int voltages[4] = {29, 63, 153, 186};
+    int voltages[4] = {440, 980, 2400, 2900};
     bool activated;
 };
 

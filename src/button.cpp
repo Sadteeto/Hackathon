@@ -1,4 +1,5 @@
 #include <button.h>
+#include <Arduino.h>
 
 
 /*! @brief Initialises the button GPIO pins. */
@@ -13,12 +14,14 @@ void audio_button::audio_activation() {
     if(!activated) {
         if(buttons[AUDIO_BUTTON_NUMBER]) {
             // Start Sending Audio
-            Serial.println('Print Audio');
+            Serial.println("Send Audio");
+            activated = true;
         }
     } else {
         if(!buttons[AUDIO_BUTTON_NUMBER]) {
             // Second INTERRUPT to Stop Sending Audio
-            Serial.println('Stop Audio');
+            Serial.println("Stop Audio");
+            activated = false;
         }
     }
 }
@@ -26,12 +29,12 @@ void audio_button::audio_activation() {
 
 /*! @brief Checks the button GPIO to determine which button is being pressed. */
 void audio_button::check_buttons() {
-    Serial.println('Error?');
+    const char message[] = "Button Output: ";
     int voltage_out = analogRead(BUTTON_GPIO_PIN);
-    Serial.print('Button Output: ');
-    Serial.print('\t');
+    Serial.print(message);
+    Serial.print("\t");
     Serial.println(voltage_out);
     for(int i = 0; i < 4; i++) {
-        buttons[i] = abs(voltage_out - voltages[i]) < 15;
+        buttons[i] = abs(voltage_out - voltages[i]) < 100;
     }
 }
