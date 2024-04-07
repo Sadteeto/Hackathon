@@ -9,21 +9,24 @@ void audio_button::init() {
 
 
 /*! @brief Checks if the audio needs to be activated. */
-void audio_button::audio_activation() {
+int audio_button::audio_activation() {
     check_buttons();
     if(!activated) {
         if(buttons[AUDIO_BUTTON_NUMBER]) {
             // Start Sending Audio
             Serial.println("Send Audio");
             activated = true;
+            return 1;
         }
     } else {
         if(!buttons[AUDIO_BUTTON_NUMBER]) {
             // Second INTERRUPT to Stop Sending Audio
             Serial.println("Stop Audio");
             activated = false;
+            return 2;
         }
     }
+    return 0;
 }
 
 

@@ -8,7 +8,7 @@
 // #include "sdkconfig.h"
 // #include "camera_index.h"
 
-#define SERVER "http://192.168.137.1:5000/post"
+#define SERVER "http://192.168.137.78:5000/post"
 
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt) {

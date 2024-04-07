@@ -10,7 +10,7 @@ class audio_button {
 public:
     audio_button() {};
     void init();
-    void audio_activation();
+    int audio_activation();
 private:
     void check_buttons();
     bool buttons[4] = {false, false, false, false};
