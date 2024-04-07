@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include "driver/i2s.h"
 
-#include <WebServer.h>
+// #include <WebServer.h>
 // #include "i2sStream.cpp"
 
 //
@@ -59,8 +59,8 @@ const char* password = ",20417Fz";
 void init_i2s();
 void startCameraServer();
 void setupLedFlash(int pin);
-
-
+void send_post_request();
+void send_post_request_stop();
 
 
 void setup() {
@@ -169,6 +169,7 @@ void setup() {
   Serial.print("Camera Ready! Use 'http://");
   Serial.print(WiFi.localIP());
   Serial.println("' to connect");
+  send_post_request();
 }
 
 void loop() {
