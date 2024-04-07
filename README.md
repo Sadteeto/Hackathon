@@ -1,2 +1,2 @@
-Buhthon 
-BUh buh buh, buh buh buh, buh.
+Server-- Microphone stream  -- Camera stream
+Client-- Button request
