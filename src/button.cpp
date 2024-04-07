@@ -26,6 +26,10 @@ int audio_button::audio_activation() {
             return 2;
         }
     }
+    if(buttons[CAPTURE_BUTTON_NUMBER]) {
+        Serial.println("Take Picture");
+        return 3;
+    }
     return 0;
 }
 

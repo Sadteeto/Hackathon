@@ -183,6 +183,8 @@ void loop() {
     send_post_request_start();
   } else if(activate == 2) {
     send_post_request_stop();
+  } else if(activate == 3) {
+    // Put Post Here
   }
   Serial.println(activate);
   delay(100);

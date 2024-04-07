@@ -4,6 +4,7 @@
 #include <Arduino.h>
 
 #define AUDIO_BUTTON_NUMBER 0
+#define CAPTURE_BUTTON_NUMBER 3
 #define BUTTON_GPIO_PIN GPIO_NUM_1
 
 class audio_button {
