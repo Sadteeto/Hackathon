@@ -11,6 +11,9 @@
 #define SERVER "http://192.168.137.78:5000/post"
 
 
+
+
+
 esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
@@ -37,6 +40,49 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     }
     return ESP_OK;
 }
+
+
+
+void send_post_request_take_pic(){
+    esp_http_client_config_t config = {
+        .url = SERVER,
+        .event_handler = _http_event_handler,
+    };
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    // Set the HTTP request type to POST
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+
+    // Set the POST data content type and body
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    const char *post_data = "{\"button\":\"takepic\"}";
+    esp_http_client_set_post_field(client, post_data, strlen(post_data));
+
+    // Perform the HTTP POST request
+    esp_err_t err = esp_http_client_perform(client);
+
+    if (err == ESP_OK) {
+        ESP_LOGI("HTTP", "HTTP POST Status = %d, content_length = %d",
+                 esp_http_client_get_status_code(client),
+                 esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE("HTTP", "HTTP POST request failed: %s", esp_err_to_name(err));
+    }
+
+    // Cleanup
+    esp_http_client_cleanup(client);
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
